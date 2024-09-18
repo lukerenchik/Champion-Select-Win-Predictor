@@ -1,0 +1,7 @@
+Well I added champion features and the model got worse... LOL.
+
+This problem is going to take some creative thought and will force me to better understand the usecases and nuances of
+using NN's to solve problems.
+
+Didn't run many tests with the parameters or model format so we could be losing ground there. Going to investigate
+further tomorrow.
