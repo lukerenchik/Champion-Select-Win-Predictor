@@ -54,6 +54,7 @@ class ChampionTranslator:
             normalize_name("Monkey King"): 154,
             normalize_name("Fiddlesticks"): 33,
             normalize_name("Fiddle"): 33,
+            normalize_name("Renata"): 106
         }
 
         # Corrected reference to self.id_to_name

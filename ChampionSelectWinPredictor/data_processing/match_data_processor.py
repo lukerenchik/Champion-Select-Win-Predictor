@@ -1,8 +1,7 @@
-# match_data_processor.py
-
 import pandas as pd
-from ChampionSelectWinPredictor.utils import normalize_name
-import re
+
+def normalize_name(name):
+    return name.strip().lower().replace("'", "").replace(" ", "")
 
 
 class MatchDataProcessor:
@@ -10,91 +9,169 @@ class MatchDataProcessor:
         self.csv_file = csv_file
         self.champion_attributes = champion_attributes
         self.translator = translator
-        self.matches = self.load_and_process_matches()
-        self.unique_champions = self.get_unique_champions()
+        self.matches = self.load_matches()
+        self.unique_champion_ids = self.get_unique_champion_ids()
 
-    def load_and_process_matches(self):
-        data = pd.read_csv(self.csv_file)
-        data.sort_values(by=['match_matchId', 'player_teamId'], inplace=True)
-        grouped_matches = data.groupby('match_matchId')
+    def load_matches(self):
+        # Load match data from CSV
+        df = pd.read_csv(self.csv_file)
+
+        # Ensure necessary columns are present
+        required_columns = [
+            'match_matchId', 'player_teamId', 'player_champName', 'player_win'
+        ]
+        for col in required_columns:
+            if col not in df.columns:
+                raise ValueError(f"Column '{col}' not found in CSV file.")
+
+        # Convert 'player_win' to integer (1 or 0)
+        df['player_win'] = df['player_win'].astype(str).map({'True': 1, 'False': 0})
+        # Drop rows with NaN in 'player_win' after mapping
+        df = df.dropna(subset=['player_win'])
+        df['player_win'] = df['player_win'].astype(int)
+
+        # Group by 'match_matchId' to assemble matches
+        grouped = df.groupby('match_matchId')
         matches = []
 
-        for match_id, match_data in grouped_matches:
-            blue_team_data = match_data[match_data['player_teamId'] == 'blue']
-            red_team_data = match_data[match_data['player_teamId'] == 'red']
+        for match_id, group in grouped:
+            blue_team = group[group['player_teamId'] == 'blue']
+            red_team = group[group['player_teamId'] == 'red']
 
-            if len(blue_team_data) == 5 and len(red_team_data) == 5:
-                blue_team_champs = blue_team_data['player_champName'].tolist()
-                red_team_champs = red_team_data['player_champName'].tolist()
-                blue_team_win = blue_team_data['player_win'].iloc[0]
-                label = 1 if blue_team_win == 1 else 0
-                matches.append((blue_team_champs, red_team_champs, label))
+            blue_team_champions = blue_team['player_champName'].tolist()
+            red_team_champions = red_team['player_champName'].tolist()
+
+            # Ensure each team has 5 champions
+            if len(blue_team_champions) != 5 or len(red_team_champions) != 5:
+                # Skip matches that don't have 5 players on each team
+                continue
+
+            # Get champion IDs using the translator
+            blue_team_ids = [self.translator.get_champion_id(champ) for champ in blue_team_champions]
+            red_team_ids = [self.translator.get_champion_id(champ) for champ in red_team_champions]
+
+            # Check for any None values (champions not found)
+            if None in blue_team_ids or None in red_team_ids:
+                # Skip matches with unknown champions
+                continue
+
+            # Determine the winner
+            blue_win = blue_team['player_win'].iloc[0]
+            label = blue_win  # 1 if blue team wins, 0 if red team wins
+
+            match = {
+                'blue_team_ids': blue_team_ids,  # Champion IDs
+                'red_team_ids': red_team_ids,  # Champion IDs
+                'label': label
+            }
+            matches.append(match)
 
         return matches
 
-    def get_unique_champions(self):
-        champions = set()
-        for blue_team, red_team, _ in self.matches:
-            champions.update(blue_team)
-            champions.update(red_team)
-        return list(champions)
+    def get_unique_champion_ids(self):
+        champion_ids = set()
+        for match in self.matches:
+            champion_ids.update(match['blue_team_ids'])
+            champion_ids.update(match['red_team_ids'])
+        return list(champion_ids)
 
-    def default_attributes(self):
-        # Define default attributes if any attributes are missing
-        # Adjust the length according to the number of features
-        return {
-            'Style': 0.0,
-            'Difficulty': 0.0,
-            'Damage': 0.0,
-            'Sturdiness': 0.0,
-            'Crowd-Control': 0.0,
-            'Mobility': 0.0,
-            'Functionality': 0.0,
-            'ClassID': 0,
-            'DamageTypeOneHot': [0.0, 0.0, 0.0]
+    def compute_team_heuristics(self, team_champion_ids):
+        # Initialize counts
+        counts = {
+            'isHypercarry': 0,
+            'isEnchanter': 0,
+            'isWarden': 0,
+            'isPhysicalDmg': 0,
+            'isMagicalDmg': 0,
+            'isDiver': 0,
+            'isSplitpusher': 0,
+            'isPicker': 0,
+            'isSieger': 0,
+            'isEngager': 0,
+            'hasZoneControl': 0,
+            'frontlineMelter': 0,
+            'bigNuke': 0,
+            'isAntiDive': 0,
+            'isSnowballer': 0,
+            'isSnowballEnabler': 0,
+            'isFrontliner': 0,
+            'antiInvis': 0,
+            'isAntiSnowballer': 0,
+            'hasInvis': 0,
+            # Add other attributes if needed
         }
 
-    def get_champion_attrs(self, champ):
-        # Normalize champion name
-        normalized_champ_name = normalize_name(champ)
-        champ_id = self.translator.get_champion_id(normalized_champ_name)
-        if champ_id is None:
-            print(f"Champion ID not found for champion '{champ}'. Using default attributes.")
-            attrs = self.default_attributes()
-        else:
-            champ_id_str = str(champ_id)
-            attrs = self.champion_attributes.get(champ_id_str, self.default_attributes())
-            if attrs == self.default_attributes():
-                print(f"Attributes not found for champion ID {champ_id_str}, using default attributes.")
+        # Sum attributes over team champions
+        for champ_id in team_champion_ids:
+            champ_attrs = self.champion_attributes[str(champ_id)]
+            for attr in counts.keys():
+                counts[attr] += int(champ_attrs[attr])  # Ensure attributes are integers
 
-        # Extract normalized numerical features
-        numerical_features = ['Style', 'Difficulty', 'Damage', 'Sturdiness', 'Crowd-Control', 'Mobility',
-                              'Functionality']
-        numerical_values = [float(attrs.get(feature, 0.0)) for feature in numerical_features]
+        # Compute heuristics based on counts
+        heuristics = {}
 
-        # Get ClassID
-        class_id = int(attrs.get('ClassID', 0))
+        # Higher-Level Heuristics Implementation
+        heuristics['hasProtectComp'] = int(counts['isHypercarry'] >= 1 and counts['isEnchanter'] >= 1)
+        heuristics['hasStrongProtectComp'] = int(
+            (counts['isHypercarry'] >= 1 and counts['isEnchanter'] >= 1 and counts['isWarden'] >= 1) or
+            (counts['isHypercarry'] >= 1 and counts['isEnchanter'] >= 2)
+        )
+        heuristics['hasCompetingHypercarries'] = int(counts['isHypercarry'] > 1)
+        heuristics['hasUnbalancedDamageProfile'] = int(counts['isPhysicalDmg'] == 0 or counts['isMagicalDmg'] == 0)
+        heuristics['hasStrongDamageProfile'] = int(counts['isPhysicalDmg'] >= 2 and counts['isMagicalDmg'] >= 2)
+        heuristics['hasDiveComp'] = int(counts['isDiver'] >= 2)
+        heuristics['hasSuperDiveComp'] = int(counts['isDiver'] >= 3)
+        heuristics['hasFourOneSplit'] = int(counts['isSplitpusher'] == 1)
+        heuristics['hasOneThreeOneSplit'] = int(counts['isSplitpusher'] == 2)
+        heuristics['hasTooManySidelaners'] = int(counts['isSplitpusher'] >= 3)
+        heuristics['hasAbilityToCatch'] = int(counts['isPicker'] == 1)
+        heuristics['hasCatchComp'] = int(counts['isPicker'] == 2)
+        heuristics['hasTooMuchCatch'] = int(counts['isPicker'] >= 3)
+        heuristics['hasSiegeSetup'] = int(counts['isSieger'] == 1)
+        heuristics['hasStrongSiege'] = int(counts['isSieger'] == 2)
+        heuristics['hasTooMuchSiege'] = int(counts['isSieger'] >= 3)
+        heuristics['hasEngageOption'] = int(counts['isEngager'] == 1)
+        heuristics['hasStrongEngage'] = int(counts['isEngager'] == 2)
+        heuristics['hasTooMuchEngage'] = int(counts['isEngager'] >= 3)
+        heuristics['canZoneEngagers'] = int(counts['hasZoneControl'] >= 1)
+        heuristics['tanksAreWorse'] = int(counts['frontlineMelter'] >= 1)
+        heuristics['hasWombo'] = int(counts['bigNuke'] >= 1 and counts['isEngager'] >= 1)
+        heuristics['hasBigWombo'] = int(counts['bigNuke'] >= 2 and counts['isEngager'] >= 2)
+        heuristics['hasConsistentWombo'] = int(counts['bigNuke'] >= 1 and counts['isEngager'] >= 2)
+        heuristics['canStopDive'] = int(counts['isAntiDive'] >= 1)
+        heuristics['hasCounterDive'] = int(counts['isAntiDive'] >= 2)
+        heuristics['snowballersNotEnabled'] = int(counts['isSnowballer'] >= 1 and counts['isSnowballEnabler'] == 0)
+        heuristics['snowballersEnabled'] = int(counts['isSnowballer'] >= 1 and counts['isSnowballEnabler'] == 1)
+        heuristics['snowballersDream'] = int(counts['isSnowballer'] >= 1 and counts['isSnowballEnabler'] >= 2)
+        heuristics['tooManySnowballers'] = int(counts['isSnowballer'] >= 3)
+        heuristics['hasBalancedComp'] = int(counts['isFrontliner'] >= 1 and counts['isHypercarry'] >= 1 and counts['isEnchanter'] >= 1)
+        heuristics['hasInvisibility'] = int(counts['hasInvis'] >= 1)
+        heuristics['hasAntiInvisibility'] = int(counts['antiInvis'] >= 1)
+        heuristics['hasAntiSnowball'] = int(counts['isAntiSnowballer'] >= 1)
 
-        # Get DamageTypeOneHot
-        damage_type_one_hot = attrs.get('DamageTypeOneHot', [0.0, 0.0, 0.0])
-        damage_type_one_hot = [float(x) for x in damage_type_one_hot]
+        # Add any additional heuristics here
 
-        # Combine all features into a single list
-        all_attrs = numerical_values + [class_id] + damage_type_one_hot
+        return heuristics
 
-        return all_attrs
+    def convert_matches_to_ids_with_heuristics(self):
+        match_data = []
+        for match in self.matches:
+            blue_team_ids = match['blue_team_ids']
+            red_team_ids = match['red_team_ids']
+            label = match['label']
 
-    # match_data_processor.py
-    def convert_matches_to_ids(self, champion_to_id):
-        matches_ids = []
-        for blue_team, red_team, label in self.matches:
-            blue_team_ids = [champion_to_id[normalize_name(champ)] for champ in blue_team]
-            red_team_ids = [champion_to_id[normalize_name(champ)] for champ in red_team]
+            # Compute heuristics
+            blue_heuristics = self.compute_team_heuristics(blue_team_ids)
+            red_heuristics = self.compute_team_heuristics(red_team_ids)
 
-            # Get attributes for each champion
-            blue_team_attrs = [self.get_champion_attrs(champ) for champ in blue_team]
-            red_team_attrs = [self.get_champion_attrs(champ) for champ in red_team]
+            match_data.append({
+                'blue_team_ids': blue_team_ids,
+                'red_team_ids': red_team_ids,
+                'blue_heuristics': blue_heuristics,
+                'red_heuristics': red_heuristics,
+                'label': label
+            })
+        return match_data
 
-            matches_ids.append((blue_team_ids, red_team_ids, blue_team_attrs, red_team_attrs, label))
-        return matches_ids
+
 
