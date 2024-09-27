@@ -8,6 +8,8 @@ from ChampionUtilities.ChampionTranslator import ChampionTranslator
 from data_processing.dataset import LoLMatchDataset
 from data_processing.match_data_processor import MatchDataProcessor, normalize_name
 from models.match_predictor import LoLMatchPredictor
+import datetime
+
 
 
 def main():
@@ -17,7 +19,7 @@ def main():
     BATCH_SIZE = 32
     EMBEDDING_DIM = 100
     NUM_EPOCHS = 8
-    LEARNING_RATE = 0.0005
+    LEARNING_RATE = 0.00005
 
     # Load and preprocess champion attributes
     champion_attributes_df = pd.read_csv(CHAMPION_ATTRIBUTES_FILE)
@@ -77,6 +79,7 @@ def main():
     model = model.to(device)
     criterion = nn.BCELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE)
+
 
     # Training Loop
     for epoch in range(NUM_EPOCHS):
@@ -215,8 +218,17 @@ def main():
     print(f'Recall: {recall:.4f}')
     print(f'F1-Score: {f1:.4f}')
 
-    # Save the trained model
-    torch.save(model.state_dict(), 'model_withV2Embeddings.pth')
+    # Get the current date
+    current_date = datetime.datetime.now().strftime("%Y-%m-%d")
+
+    # Format the test accuracy to two decimal places
+    formatted_test_accuracy = f"{test_accuracy:.2f}"
+
+    # Create the dynamic filename
+    filename = f"win_predictor_{current_date}_{formatted_test_accuracy}.pth"
+
+    # Save the trained model with the dynamic filename
+    torch.save(model.state_dict(), filename)
 
 if __name__ == '__main__':
     main()

@@ -1,0 +1,14 @@
+Options to improve model performance:
+
+1.) Aquire more training data - There are logistical concerns with this method as getting the correct format for data &
+getting the data quickly has posed a problem. But it may be worth putting in the effort to solve now, as the longer data
+is being collected the more time it is able to payoff in the background
+
+2.) Implement champion winrates - I am able to hardcode these in, but that seems very naieve, I would like to somehow
+create a system where I am able to access a public published resource with these winrates to build into my application.
+Additionally, I cannot calculate them from my dataset as that will incorperate bias into the model.
+
+3.) Implement champion matchup winrates - This is an extension of the previous point where the model is able to reference
+the average winrate between two champions when evaluating champion select, but I would need to create a large table
+that houses all of this matchup information. I think this may be the most effective juice for getting more out of the model.
+
