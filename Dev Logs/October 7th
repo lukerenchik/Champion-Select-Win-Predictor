@@ -1,0 +1,4 @@
+Working on match heuristics today, my idea of a 60-65% target for the model is being validated as after 30 blind matches
+I have correctly identified 19 of them (63.3%), I think it is reasonable for the model to perform as well as I do on this
+dataset if I tune it with my personal heuristics, and hopefully eventually it will be able to identify trends and patterns
+that I am unable to see. 

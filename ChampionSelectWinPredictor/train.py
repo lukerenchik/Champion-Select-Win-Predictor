@@ -14,12 +14,12 @@ import datetime
 
 def main():
     # Constants
-    CSV_FILE = 'data/lol_match_data.csv'
-    CHAMPION_ATTRIBUTES_FILE = 'data/LoL-Champions.csv'
-    BATCH_SIZE = 32
-    EMBEDDING_DIM = 100
-    NUM_EPOCHS = 8
-    LEARNING_RATE = 0.00005
+    CSV_FILE = '/home/lightbringer/Documents/Dev/Champion-Select-Win-Predictor/Champion-Select-Win-Predictor/ChampionSelectWinPredictor/data/lol_match_data.csv'
+    CHAMPION_ATTRIBUTES_FILE = '/home/lightbringer/Documents/Dev/Champion-Select-Win-Predictor/Champion-Select-Win-Predictor/ChampionSelectWinPredictor/data/LoL-Champions.csv'
+    BATCH_SIZE = 64 # 64
+    EMBEDDING_DIM = 200 # 200
+    NUM_EPOCHS = 8 # 10
+    LEARNING_RATE = 0.000025 # 0.00001
 
     # Load and preprocess champion attributes
     champion_attributes_df = pd.read_csv(CHAMPION_ATTRIBUTES_FILE)

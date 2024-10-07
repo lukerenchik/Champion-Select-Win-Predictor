@@ -1,0 +1,10 @@
+Well today was successful, in a way.
+
+I was able to scrape Champion winrates from the patch where my data came from to feed the model. The problem was fairly
+interesting, as I learned about to usecase of BeautifulSoup to extract information from raw html. Unfortunatly, this
+winrate information/data actually hurt my models understanding of the champions and their relative strength. What this
+demonstrates to me, is that champion winrate is a part of some greater trend that is embedded deeper within the game,
+and that it cannot be used to describe a champions strength in isolation (aside from very extreme cases (55+ 45-)
+
+Experiment ran, results unsatisfying but fair, will be back at it tomorrow, most likely taking a look at the embeddings
+again.

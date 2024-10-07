@@ -1,0 +1,11 @@
+I have been trying to improve my model accuracy over the past week. I am getting values around 53% accuracy on a binary
+problem, which seems rather low. I am aiming for 60%+. So far I tried a naieve approach where I just gave the model the
+names of the champions and attempted to get it to draw conclusions about their power against one another, that model
+was highly volitile with results between 51-54% accuracy. I then added simple encodings that were made by another programmer,
+these improved the model to a consistent 53%. I felt as if the information given by these parameters was not a complete
+picture of what the characters add within a champion select. I devised my own set of parameters that included a large
+number of binary labels that each character would either have a true or false flag for. I also devised there might be
+some higher level heuristics I could feed into the model (like hypercarry + enchanter + warden = strong hypercarry comp)
+that could give some team composition level insights to the model. Unfortunately these efforts have not been successful
+thus far as the model is still performing at a 53.25% accuracy. I believe the encodings I have created give the model
+a better chance to understand the data, but the picture is not complete. I need to add more.

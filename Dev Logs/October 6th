@@ -1,0 +1,7 @@
+Moment of truth, I've spent the last week and a half adding twice as many parameters to the champion attributes model.
+
+Let's see if it improves performance, previous best was 55% accuracy.
+
+Well. 55% again. Got a good idea from Derek, testing myself to see my scores. Writing down my heuristics for the
+matches and putting them in the model.
+
